@@ -28,7 +28,7 @@ def get_name_suggestions(input_text, df, num_suggestions=5):
     return []
 
 # Streamlit app
-st.title('MCA Rank Explorer: Discover Top Students Across All Streams')
+st.title('MCA Rank Explorer: Discover Top Students')
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
