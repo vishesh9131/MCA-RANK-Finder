@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from fuzzywuzzy import process
+import random
 
 st.set_page_config(
     page_title="RankDekho",
@@ -8,24 +10,28 @@ st.set_page_config(
     initial_sidebar_state="auto"
 )
 
-df = pd.read_csv('TGPA.csv')
+@st.cache_data
+def load_data():
+    df = pd.read_csv('TGPA.csv')
+    df.columns = df.columns.str.strip()
+    df['Regd No.'] = df['Regd No.'].astype(str)
+    df['Name'] = df['Name'].str.strip()
+    df['Rank'] = df['Cgpa'].rank(ascending=False, method='min').astype(int)
+    return df
 
-df.columns = df.columns.str.strip()
-df['Regd No.'] = df['Regd No.'].astype(str)
-df['Name'] = df['Name'].str.strip()
-
-df['Rank'] = df['Cgpa'].rank(ascending=False, method='min').astype(int)
+df = load_data()
 
 def get_name_suggestions(input_text, df, num_suggestions=5):
     if input_text:
-        suggestions = df[df['Name'].str.contains(input_text, case=False, na=False)]['Name'].head(num_suggestions).tolist()
-        return suggestions
+        names = df['Name'].tolist()
+        suggestions = process.extract(input_text, names, limit=num_suggestions)
+        return [suggestion[0] for suggestion in suggestions]
     return []
 
 st.title('Rank Dekho : MCA Rank Explorer')
 
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Choose a page", ["Home", "Top Students", "State Distribution", "About Me"])
+page = st.sidebar.radio("Choose a page", ["Home", "Top Students", "State Distribution", "Student Comparison", "Shoutout to...", "CGPA Distribution", "About Me"])
 
 if page == "Home":
     search_term = st.text_input('Enter Registration Number or Name')
@@ -36,7 +42,7 @@ if page == "Home":
             for idx, (col, suggestion) in enumerate(zip(cols, suggestions)):
                 if col.button(suggestion, key=f"{suggestion}_{idx}", help="Click to search"):
                     st.session_state.search_term = suggestion
-                    st.rerun()
+                    st.experimental_rerun()
 
         search_term = st.session_state.get('search_term', search_term)
 
@@ -61,28 +67,118 @@ if page == "Home":
     st.markdown("""
         <div style="margin-top: 20px;">
             <div style="background-color: #dce2f0; padding: 10px; border-radius: 10px;">
-                Welcome to the ultimate student snooping app! 🔍 Find students by registration number or name, check out the top CGPA brainiacs, and see where they’re from. Created by Vishesh Yadav...
+                Welcome to the ultimate student snooping app! 🔍 Find students by registration number or name, check out the top CGPA brainiacs, and see where they're from. Created by Vishesh Yadav...
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-
-elif page == "DataStudy":
-    st.write("### Data Study")
-    st.write("Explore the data and gain insights.")
-
 elif page == "Top Students":
-    st.write("### Top 10 Students by CGPA")
-    top_10_students = df.nsmallest(10, 'Rank')
-    fig = px.bar(top_10_students, x='Name', y='Cgpa', color='Cgpa', 
+    num_students = st.slider("Select number of top students to display", 1, 50, 10)
+    st.write(f"### Top {num_students} Students by CGPA")
+    top_students = df.nsmallest(num_students, 'Rank')
+    fig = px.bar(top_students, x='Name', y='Cgpa', color='Cgpa', 
                  labels={'Cgpa': 'CGPA', 'Name': 'Student Name'},
-                 title='Top 10 Students by CGPA')
+                 title=f'Top {num_students} Students by CGPA')
     st.plotly_chart(fig)
 
 elif page == "State Distribution":
+    state = st.selectbox("Select a state to filter", options=["All"] + df['State'].unique().tolist())
+    cgpa_range = st.slider("Select CGPA range", 0.0, 10.0, (0.0, 10.0), 0.1)
+    
     st.write("### Number of Students by State")
-    state_counts = df['State'].value_counts()
+    if state == "All":
+        filtered_df = df[(df['Cgpa'] >= cgpa_range[0]) & (df['Cgpa'] <= cgpa_range[1])]
+        state_counts = filtered_df['State'].value_counts()
+    else:
+        filtered_df = df[(df['State'] == state) & (df['Cgpa'] >= cgpa_range[0]) & (df['Cgpa'] <= cgpa_range[1])]
+        state_counts = filtered_df['State'].value_counts()
+    
     st.bar_chart(state_counts)
+    
+    st.write("### State Distribution Pie Chart")
+    fig = px.pie(filtered_df, names='State', title='State Distribution')
+    st.plotly_chart(fig)
+    
+    if state != "All":
+        st.write(f"### Detailed Statistics for {state}")
+        num_students = filtered_df.shape[0]
+        avg_cgpa = filtered_df['Cgpa'].mean()
+        top_students = filtered_df.nsmallest(5, 'Rank')
+        
+        st.write(f"Number of Students: {num_students}")
+        st.write(f"Average CGPA: {avg_cgpa:.2f}")
+        st.write("Top 5 Students:")
+        for index, row in top_students.iterrows():
+            st.markdown(f"""
+                <div style="background-color: #50586C; padding: 10px; border-radius: 5px; margin-top: 10px; border: 1px solid #DCE2F0;">
+                    <h4 style="color: #DCE2F0;">Rank: {row['Rank']}</h4>
+                    <p style="font-size: 14px; color: #DCE2F0;">
+                        <strong>Registration Number:</strong> {row['Regd No.']}<br>
+                        <strong>Name:</strong> {row['Name']}<br>
+                        <strong>CGPA:</strong> {row['Cgpa']}
+                    </p>
+                </div>
+            """, unsafe_allow_html=True)
+        
+        # Download filtered data
+        st.write("### Download Data")
+        csv = filtered_df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Download data as CSV",
+            data=csv,
+            file_name='filtered_data.csv',
+            mime='text/csv',
+        )
+        
+        # Interactive map
+        st.write("### Interactive Map")
+        fig_map = px.scatter_geo(filtered_df, locations="State", locationmode='USA-states', 
+                                 hover_name="Name", size="Cgpa", 
+                                 projection="albers usa", title="Student Distribution by State")
+        st.plotly_chart(fig_map)
+
+elif page == "Student Comparison":
+    st.write("### Student Comparison Tool")
+    student1 = st.selectbox("Select first student", df['Name'].unique())
+    student2 = st.selectbox("Select second student", df['Name'].unique())
+    
+    if student1 and student2:
+        st.write(f"Comparing {student1} and {student2}")
+        student1_data = df[df['Name'] == student1].iloc[0]
+        student2_data = df[df['Name'] == student2].iloc[0]
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader(f"{student1}")
+            st.markdown(f"**Registration Number:** {student1_data['Regd No.']}")
+            st.markdown(f"**CGPA:** {student1_data['Cgpa']}")
+            st.markdown(f"**Rank:** {student1_data['Rank']}")
+        
+        with col2:
+            st.subheader(f"{student2}")
+            st.markdown(f"**Registration Number:** {student2_data['Regd No.']}")
+            st.markdown(f"**CGPA:** {student2_data['Cgpa']}")
+            st.markdown(f"**Rank:** {student2_data['Rank']}")
+
+elif page == "Shoutout to...":
+    st.write("### Shoutout to...")
+    random_student = df.sample(1).iloc[0]
+    st.markdown(f"""
+        <div style="background-color: #50586C; padding: 20px; border-radius: 10px;margin-top: 10px; border: 1px solid #DCE2F0;">
+            <h2 style="color: #DCE2F0;">Rank: {random_student['Rank']}</h2>
+            <p style="font-size: 18px; color: #DCE2F0;">
+                <strong>Registration Number:</strong> {random_student['Regd No.']}<br>
+                <strong>Name:</strong> {random_student['Name']}<br>
+                <strong>CGPA:</strong> {random_student['Cgpa']}
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+elif page == "CGPA Distribution":
+    st.write("### CGPA Distribution Histogram")
+    fig = px.histogram(df, x='Cgpa', nbins=20, title='CGPA Distribution')
+    st.plotly_chart(fig)
 
 elif page == "About Me":
     st.write("### About Me")
