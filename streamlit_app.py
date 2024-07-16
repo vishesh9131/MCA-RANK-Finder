@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 
 st.set_page_config(
-    page_title="MCA Rank Explorer",
+    page_title="RankDekho",
     layout="centered",
     initial_sidebar_state="auto"
 )
@@ -22,7 +22,7 @@ def get_name_suggestions(input_text, df, num_suggestions=5):
         return suggestions
     return []
 
-st.title('MCA Rank Explorer: Discover Top Students')
+st.title('Rank Dekho : MCA Rank Explorer')
 
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Choose a page", ["Home", "Top Students", "State Distribution", "About Me"])
