@@ -28,7 +28,7 @@ def get_name_suggestions(input_text, df, num_suggestions=5):
     return []
 
 # Streamlit app
-st.title('MCA Rank Explorer: Discover Top Students')
+st.title('MCA Rank Explorer: Discover Top Students Across All Streams')
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
@@ -43,7 +43,7 @@ if page == "Home":
         if suggestions:
             cols = st.columns(len(suggestions))
             for col, suggestion in zip(cols, suggestions):
-                if col.button(suggestion, key=suggestion, help="Click to search",use_container_width=True):
+                if col.button(suggestion, key=suggestion, help="Click to search"):
                     st.session_state.search_term = suggestion
                     st.rerun()
 
