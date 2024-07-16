@@ -33,8 +33,8 @@ if page == "Home":
         suggestions = get_name_suggestions(search_term, df)
         if suggestions:
             cols = st.columns(len(suggestions))
-            for col, suggestion in zip(cols, suggestions):
-                if col.button(suggestion, key=suggestion, help="Click to search"):
+            for idx, (col, suggestion) in enumerate(zip(cols, suggestions)):
+                if col.button(suggestion, key=f"{suggestion}_{idx}", help="Click to search"):
                     st.session_state.search_term = suggestion
                     st.rerun()
 
@@ -58,7 +58,6 @@ if page == "Home":
         else:
             st.write('No student found with the given registration number or name.')
 
-    # st.info("Welcome to the ultimate student snooping app! 🔍 Find students by registration number or name, check out the top CGPA brainiacs, and see where they’re from. Created by Vishesh Yadav...")
     st.markdown("""
         <div style="margin-top: 20px;">
             <div style="background-color: #dce2f0; padding: 10px; border-radius: 10px;">
