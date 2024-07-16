@@ -2,43 +2,34 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# Set page configuration to force light mode
 st.set_page_config(
     page_title="MCA Rank Explorer",
     layout="centered",
     initial_sidebar_state="auto"
 )
 
-# Load the data
 df = pd.read_csv('TGPA.csv')
 
-# Clean the data
 df.columns = df.columns.str.strip()
 df['Regd No.'] = df['Regd No.'].astype(str)
 df['Name'] = df['Name'].str.strip()
 
-# Calculate rank based on CGPA
 df['Rank'] = df['Cgpa'].rank(ascending=False, method='min').astype(int)
 
-# Function to get name suggestions
 def get_name_suggestions(input_text, df, num_suggestions=5):
     if input_text:
         suggestions = df[df['Name'].str.contains(input_text, case=False, na=False)]['Name'].head(num_suggestions).tolist()
         return suggestions
     return []
 
-# Streamlit app
 st.title('MCA Rank Explorer: Discover Top Students')
 
-# Sidebar for navigation
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Choose a page", ["Home", "Top Students", "State Distribution", "About Me"])
 
 if page == "Home":
-    # Input for registration number or name
     search_term = st.text_input('Enter Registration Number or Name')
     if search_term:
-        # Display name suggestions
         suggestions = get_name_suggestions(search_term, df)
         if suggestions:
             cols = st.columns(len(suggestions))
@@ -47,10 +38,8 @@ if page == "Home":
                     st.session_state.search_term = suggestion
                     st.rerun()
 
-        # Use the updated search term from session state
         search_term = st.session_state.get('search_term', search_term)
 
-        # Search by registration number or name
         result = df[(df['Regd No.'] == search_term) | (df['Name'].str.contains(search_term, case=False, na=False))]
         
         if not result.empty:
@@ -69,7 +58,6 @@ if page == "Home":
         else:
             st.write('No student found with the given registration number or name.')
 
-    # About information at the bottom of the Home page
     # st.info("Welcome to the ultimate student snooping app! 🔍 Find students by registration number or name, check out the top CGPA brainiacs, and see where they’re from. Created by Vishesh Yadav...")
     st.markdown("""
         <div style="margin-top: 20px;">
