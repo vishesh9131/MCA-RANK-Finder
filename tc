@@ -2,13 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# Set page configuration to force light mode
-st.set_page_config(
-    page_title="MCA Rank Explorer",
-    layout="centered",
-    initial_sidebar_state="auto"
-)
-
 # Load the data
 df = pd.read_csv('TGPA.csv')
 
@@ -28,7 +21,7 @@ def get_name_suggestions(input_text, df, num_suggestions=5):
     return []
 
 # Streamlit app
-st.title('MCA Rank Explorer: Discover Top Students')
+st.title('MCA Rank Explorer: Discover Top Students Across All Streams')
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
@@ -37,37 +30,42 @@ page = st.sidebar.radio("Choose a page", ["Home", "Top Students", "State Distrib
 if page == "Home":
     # Input for registration number or name
     search_term = st.text_input('Enter Registration Number or Name')
+
     if search_term:
         # Display name suggestions
         suggestions = get_name_suggestions(search_term, df)
         if suggestions:
-            cols = st.columns(len(suggestions))
-            for col, suggestion in zip(cols, suggestions):
-                if col.button(suggestion, key=suggestion, help="Click to search",use_container_width=True):
-                    st.session_state.search_term = suggestion
-                    st.rerun()
+            st.write("### Did you mean:")
+            for suggestion in suggestions:
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.write(suggestion)
+                with col2:
+                    if st.button("Search", key=suggestion):
+                        st.session_state.search_term = suggestion
+                        st.rerun()
 
-        # Use the updated search term from session state
-        search_term = st.session_state.get('search_term', search_term)
+            # Use the updated search term from session state
+            search_term = st.session_state.get('search_term', search_term)
 
-        # Search by registration number or name
-        result = df[(df['Regd No.'] == search_term) | (df['Name'].str.contains(search_term, case=False, na=False))]
-        
-        if not result.empty:
-            st.write('### Student Details')
-            for index, row in result.iterrows():
-                st.markdown(f"""
-                    <div style="background-color: #50586C; padding: 20px; border-radius: 10px;margin-top: 10px; border: 1px solid #DCE2F0;">
-                        <h2 style="color: #DCE2F0;">Rank: {row['Rank']}</h2>
-                        <p style="font-size: 18px; color: #DCE2F0;">
-                            <strong>Registration Number:</strong> {row['Regd No.']}<br>
-                            <strong>Name:</strong> {row['Name']}<br>
-                            <strong>CGPA:</strong> {row['Cgpa']}
-                        </p>
-                    </div>
-                """, unsafe_allow_html=True)    
-        else:
-            st.write('No student found with the given registration number or name.')
+            # Search by registration number or name
+            result = df[(df['Regd No.'] == search_term) | (df['Name'].str.contains(search_term, case=False, na=False))]
+            
+            if not result.empty:
+                st.write('### Student Details')
+                for index, row in result.iterrows():
+                    st.markdown(f"""
+                        <div style="background-color: #50586C; padding: 20px; border-radius: 10px;margin-top: 10px; border: 1px solid #DCE2F0;">
+                            <h2 style="color: #DCE2F0;">Rank: {row['Rank']}</h2>
+                            <p style="font-size: 18px; color: #DCE2F0;">
+                                <strong>Registration Number:</strong> {row['Regd No.']}<br>
+                                <strong>Name:</strong> {row['Name']}<br>
+                                <strong>CGPA:</strong> {row['Cgpa']}
+                            </p>
+                        </div>
+                    """, unsafe_allow_html=True)    
+            else:
+                st.write('No student found with the given registration number or name.')
 
     # About information at the bottom of the Home page
     # st.info("Welcome to the ultimate student snooping app! 🔍 Find students by registration number or name, check out the top CGPA brainiacs, and see where they’re from. Created by Vishesh Yadav...")
